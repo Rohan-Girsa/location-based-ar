@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>AR Treasure Hunt</title>
+
+    <!-- Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+    <!-- AR.js -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #000;
+      }
+
+      /* ───────────────── LOADING ───────────────── */
+      .loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 24px 36px;
+        border-radius: 16px;
+        font-size: 18px;
+        z-index: 10000;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      }
+
+      /* ───────────────── HUD STACK (RIGHT) ───────────────── */
+
+      /* Compass – bottom of stack */
+      #direction-compass {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        width: 90px;
+        height: 90px;
+        z-index: 9998;
+        pointer-events: none;
+      }
+
+      .compass-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .compass-circle {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.5);
+        border: 3px solid rgba(251, 191, 36, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(8px);
+      }
+
+      .compass-arrow {
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 36px solid #fbbf24;
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform-origin: 50% 34px;
+        transform: translateX(-50%);
+        filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.6));
+        transition: transform 0.25s ease-out;
+      }
+
+      .compass-center {
+        width: 10px;
+        height: 10px;
+        background: #fff;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+      }
+
+      .compass-label {
+        position: absolute;
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+      }
+
+      .north {
+        top: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fbbf24;
+      }
+      .south {
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .east {
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .west {
+        left: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      /* Distance – above compass */
+      #distance-info {
+        position: fixed;
+        bottom: 116px;
+        right: 16px;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+        text-align: center;
+        min-width: 90px;
+      }
+
+      /* Direction text – above distance */
+      #direction-text {
+        position: fixed;
+        bottom: 156px;
+        right: 16px;
+        background: rgba(251, 191, 36, 0.9);
+        color: #000;
+        padding: 6px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 800;
+        z-index: 9999;
+        text-align: center;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        min-width: 90px;
+      }
+
+      /* Current GPS coordinates – above direction */
+      #gps-info {
+        position: fixed;
+        bottom: 192px;
+        right: 16px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #0f0;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 10px;
+        z-index: 9999;
+        line-height: 1.3;
+        backdrop-filter: blur(4px);
+        text-align: right;
+        min-width: 90px;
+      }
+
+      /* Hide large center distance */
+      #distance-overlay {
+        display: none;
+      }
+
+      /* Capture UI */
+      .chest-opening {
+        position: fixed;
+        bottom: 120px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(251, 191, 36, 0.92);
+        color: #000;
+        padding: 16px 32px;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 18px;
+        z-index: 10000;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+      }
+
+      .captured-message {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(74, 222, 128, 0.94);
+        color: white;
+        padding: 40px 60px;
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 28px;
+        text-align: center;
+        z-index: 10000;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      }
+
+      #captured-list {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        font-size: 15px;
+        z-index: 9999;
+        max-width: 220px;
+        backdrop-filter: blur(4px);
+      }
+
+      #captured-list h3 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        color: #4ade80;
+        text-align: center;
+      }
+
+      #captured-list ul {
+        margin: 0;
+        padding-left: 24px;
+        list-style: none;
+      }
+
+      #captured-list li {
+        margin: 6px 0;
+        font-size: 14px;
+      }
+
+      #captured-list li:before {
+        content: "✓ ";
+        color: #4ade80;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      📡 Waiting for GPS...<br />
+      <small style="font-size: 14px; opacity: 0.8; margin-top: 8px; display: block">
+        Please allow location access
+      </small>
+    </div>
+
+    <!-- AR Scene -->
+    <a-scene
+      embedded
+      vr-mode-ui="enabled: false"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      renderer="antialias: true; alpha: true"
+    >
+      <a-camera gps-camera="gpsMinDistance: 5" rotation-reader></a-camera>
+
+      <a-assets>
+        <a-asset-item
+          id="gold-chest"
+          src="./assets/treasure-chest/shake_treasure_chest.glb"
+        ></a-asset-item>
+      </a-assets>
+    </a-scene>
+
+    <!-- HUD Stack (bottom-right) -->
+    
+    <!-- GPS Coordinates -->
+    <div id="gps-info">GPS: --</div>
+
+    <!-- Direction text -->
+    <div id="direction-text">🧭 N</div>
+
+    <!-- Distance -->
+    <div id="distance-info">Distance: -- m</div>
+
+    <!-- Compass -->
+    <div id="direction-compass">
+      <div class="compass-container">
+        <div class="compass-circle">
+          <div class="compass-label north">N</div>
+          <div class="compass-label south">S</div>
+          <div class="compass-label east">E</div>
+          <div class="compass-label west">W</div>
+          <div class="compass-arrow" id="compass-arrow"></div>
+          <div class="compass-center"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden elements -->
+    <div id="distance-overlay" style="display: none;">-- m</div>
+
+    <!-- Captured treasures list -->
+    <div id="captured-list" style="display: none">
+      <h3>Captured Treasures</h3>
+      <ul id="captured-items"></ul>
+    </div>
+
+    <!-- Messages -->
+    <div id="chest-opening" class="chest-opening" style="display: none">
+      ✨ Opening chest...
+    </div>
+    <div id="captured-message" class="captured-message" style="display: none"></div>
+
+    <!-- Script -->
+    <script src="./script.js"></script>
+  </body>
+</html>

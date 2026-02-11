@@ -1,0 +1,11 @@
+Model Information:
+* title:	Golden Treasure Chest
+* source:	https://sketchfab.com/3d-models/golden-treasure-chest-a217fca36ed240e9b8e90232d78860b6
+* author:	estevanscalperbot (https://sketchfab.com/estevanscalperbot)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Golden Treasure Chest" (https://sketchfab.com/3d-models/golden-treasure-chest-a217fca36ed240e9b8e90232d78860b6) by estevanscalperbot (https://sketchfab.com/estevanscalperbot) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

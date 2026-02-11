@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>AR Treasure Hunt</title>
+
+    <!-- Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+    <!-- A-Frame -->
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+
+    <!-- AR.js -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #000;
+      }
+
+      /* ───────────────── LOADING ───────────────── */
+      .loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 24px 36px;
+        border-radius: 16px;
+        font-size: 18px;
+        z-index: 10000;
+        text-align: center;
+      }
+
+      /* ───────────────── HUD STACK (RIGHT) ───────────────── */
+
+      /* GPS – bottom */
+      #gps-info {
+        position: fixed;
+        bottom: 16px;
+        right: 16px;
+        background: rgba(0, 0, 0, 0.75);
+        color: #0f0;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        z-index: 9999;
+        line-height: 1.4;
+        backdrop-filter: blur(4px);
+      }
+
+      /* Treasure – above GPS */
+      #treasure-info {
+        position: fixed;
+        bottom: 72px;
+        right: 16px;
+        background: rgba(251, 191, 36, 0.85);
+        color: #000;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        z-index: 9999;
+        line-height: 1.4;
+        font-weight: bold;
+        backdrop-filter: blur(4px);
+      }
+
+      /* Distance – above treasure */
+      #distance-info {
+        position: fixed;
+        bottom: 128px;
+        right: 16px;
+        background: rgba(0, 0, 0, 0.75);
+        color: white;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: bold;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+      }
+
+      /* Compass – above distance */
+      #direction-compass {
+        position: fixed;
+        bottom: 190px;
+        right: 16px;
+        width: 90px;
+        height: 90px;
+        z-index: 9998;
+        pointer-events: none;
+      }
+
+      .compass-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .compass-circle {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.5);
+        border: 3px solid rgba(251, 191, 36, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .compass-arrow {
+        width: 0;
+        height: 0;
+        border-left: 8px solid transparent;
+        border-right: 8px solid transparent;
+        border-bottom: 36px solid #fbbf24;
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform-origin: 50% 34px;
+        transform: translateX(-50%);
+        transition: transform 0.25s ease-out;
+      }
+
+      .compass-center {
+        width: 10px;
+        height: 10px;
+        background: #fff;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .compass-label {
+        position: absolute;
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+      }
+
+      .north {
+        top: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fbbf24;
+      }
+      .south {
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .east {
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .west {
+        left: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      /* Hide large center distance */
+      #distance-overlay {
+        display: none;
+      }
+
+      /* Capture UI */
+      .chest-opening,
+      .captured-message {
+        z-index: 10000;
+      }
+    </style>
+  </head>
+
+  <body>
+    <!-- Loading -->
+    <div id="loading" class="loading">
+      📡 Waiting for GPS...<br />
+      <small>Please allow location access</small>
+    </div>
+
+    <!-- AR Scene -->
+    <a-scene
+      embedded
+      vr-mode-ui="enabled: false"
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      renderer="antialias: true; alpha: true"
+    >
+      <a-camera
+        gps-new-camera="gpsMinDistance: 3; gpsTimeInterval: 2000; positionMinAccuracy: 40"
+        rotation-reader
+      ></a-camera>
+
+      <a-assets>
+        <a-asset-item
+          id="gold-chest"
+          src="./assets/treasure-chest/shake_treasure_chest.glb"
+        ></a-asset-item>
+      </a-assets>
+    </a-scene>
+
+    <!-- Compass -->
+    <div id="direction-compass">
+      <div class="compass-container">
+        <div class="compass-circle">
+          <div class="compass-label north">N</div>
+          <div class="compass-label south">S</div>
+          <div class="compass-label east">E</div>
+          <div class="compass-label west">W</div>
+          <div class="compass-arrow" id="compass-arrow"></div>
+          <div class="compass-center"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Distance -->
+    <div id="distance-info">Distance: -- m</div>
+
+    <!-- Treasure GPS -->
+    <!-- <div id="treasure-info">Treasure: --</div> -->
+
+    <!-- User GPS -->
+    <!-- <div id="gps-info">GPS: waiting...</div> -->
+
+    <!-- Messages -->
+    <div id="chest-opening" class="chest-opening" style="display: none">
+      Opening chest...
+    </div>
+    <div
+      id="captured-message"
+      class="captured-message"
+      style="display: none"
+    ></div>
+
+    <!-- Script -->
+    <script src="./script.js"></script>
+  </body>
+</html>
