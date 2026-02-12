@@ -7,16 +7,14 @@ var models = [
     {
         url: './assets/treasure-chest/tc-1.glb',
         scale: '0.8 0.8 0.8',
-        rotation: '0 180 0'
+        rotation: '0 180 0',
     },
     {
         url: './assets/treasure-chest/tc-1.glb',
         scale: '0.8 0.8 0.8',
-        rotation: '0 180 0'
+        rotation: '0 180 0',
     },
 ];
-
-var modelIndex = 0;
 
 /**
  * Offset a lat/lng by a given number of meters north and east.
@@ -38,38 +36,27 @@ function setModel(model, entity) {
     if (model.scale)    entity.setAttribute('scale',    model.scale);
     if (model.rotation) entity.setAttribute('rotation', model.rotation);
     if (model.position) entity.setAttribute('position', model.position);
-    entity.setAttribute('glb-model', model.url);
-    // document.getElementById('model-info').innerText = model.info;
+    entity.setAttribute('gltf-model', model.url); // fixed: was 'glb-model'
 }
 
 function renderPlaces(places) {
     var scene = document.querySelector('a-scene');
 
+    // Remove any previously placed entities before re-rendering
     document.querySelectorAll('[gps-entity-place]').forEach(function (el) {
         el.parentNode.removeChild(el);
     });
 
+    // Place all three entities simultaneously at their GPS offsets
     places.forEach(function (place, idx) {
         var entity = document.createElement('a-entity');
         entity.setAttribute(
             'gps-entity-place',
             'latitude: ' + place.location.lat + '; longitude: ' + place.location.lng + ';'
         );
-
-        // Each place gets a different model in the cycle
         setModel(models[idx % models.length], entity);
-        entity.setAttribute('animation-mixer', '');
         scene.appendChild(entity);
     });
-
-    // Change-model button cycles all placed entities together
-    document.querySelector('button[data-action="change"]').onclick = function () {
-        modelIndex++;
-        document.querySelectorAll('[gps-entity-place]').forEach(function (entity, idx) {
-            var newIndex = (modelIndex + idx) % models.length;
-            setModel(models[newIndex], entity);
-        });
-    };
 }
 
 function buildPlacesFromCoords(lat, lng) {
@@ -94,8 +81,6 @@ function updateGPSStatus(msg) {
 }
 
 window.onload = function () {
-    document.querySelector('button[data-action="change"]').innerText = '﹖';
-
     if (!navigator.geolocation) {
         updateGPSStatus('❌ Geolocation not supported by this browser.');
         return;
@@ -103,35 +88,52 @@ window.onload = function () {
 
     updateGPSStatus('📡 Acquiring GPS...');
 
-    // watchPosition fires on first fix and again whenever the user moves,
-    // keeping the Pokémon anchored to the correct real-world offsets.
-    navigator.geolocation.watchPosition(
-        function (position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            var acc = position.coords.accuracy;
+    var watchId = null;
 
-            updateGPSStatus(
-                '✅ GPS locked  |  ' +
-                lat.toFixed(6) + ', ' + lng.toFixed(6) +
-                '  (±' + Math.round(acc) + ' m)'
-            );
-
-            var places = buildPlacesFromCoords(lat, lng);
-            renderPlaces(places);
-        },
-        function (err) {
-            var messages = {
-                1: '❌ Permission denied – please allow location access.',
-                2: '❌ Position unavailable.',
-                3: '❌ GPS timeout – retrying…'
-            };
-            updateGPSStatus(messages[err.code] || '❌ GPS error: ' + err.message);
-        },
-        {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000
+    function startWatch() {
+        // Clear any existing watch before starting a new one
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
         }
-    );
+
+        watchId = navigator.geolocation.watchPosition(
+            function (position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                var acc = position.coords.accuracy;
+
+                updateGPSStatus(
+                    '✅ GPS locked  |  ' +
+                    lat.toFixed(6) + ', ' + lng.toFixed(6) +
+                    '  (±' + Math.round(acc) + ' m)'
+                );
+
+                var places = buildPlacesFromCoords(lat, lng);
+                renderPlaces(places);
+            },
+            function (err) {
+                if (err.code === 1) {
+                    // Permission denied – no point retrying
+                    updateGPSStatus('❌ Permission denied – allow location in browser/OS settings.');
+                } else if (err.code === 2) {
+                    // Position unavailable – retry after 3s
+                    updateGPSStatus('⚠️ Position unavailable – retrying…');
+                    setTimeout(startWatch, 3000);
+                } else if (err.code === 3) {
+                    // Timeout – retry immediately with lower accuracy as fallback
+                    updateGPSStatus('⏳ GPS timeout – retrying with network location…');
+                    setTimeout(startWatch, 1000);
+                } else {
+                    updateGPSStatus('❌ GPS error: ' + err.message);
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 5000,   // accept a fix up to 5s old
+                timeout: 30000      // wait up to 30s for a fix (cold-start)
+            }
+        );
+    }
+
+    startWatch();
 };
