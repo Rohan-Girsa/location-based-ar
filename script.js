@@ -2,13 +2,14 @@
 // Add as many lat/lng locations as you like. One chest will be placed at each.
 var PLACES = [
     { name: 'Chest 1', lat: 28.412019, lng: 77.109076 },
-    { name: 'Chest 2', lat: 28.412549, lng: 77.109301 },
+    { name: 'Chest 2', lat: 28.412189, lng: 77.109486 },
     { name: 'Chest 3', lat: 28.412360, lng: 77.109199 },
     { name: 'Chest 4', lat: 28.412559, lng: 77.109104 },
     { name: 'Chest 5', lat: 28.409375, lng: 77.109199 },
     { name: 'Chest 6', lat: 28.437229, lng: 77.101551 },
     { name: 'Chest 7', lat: 28.632479, lng: 77.086509 },
     { name: 'Chest 8', lat: 28.681455, lng: 77.054366 },
+    { name: 'Chest 9', lat: 28.816395, lng: 84.463890 },
 ];
 
 var MODEL_URL = './assets/treasure-chest/tc-1.glb';
