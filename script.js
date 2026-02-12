@@ -1,21 +1,18 @@
 var models = [
     {
-        url: './assets/magnemite/scene.gltf',
-        scale: '0.5 0.5 0.5',
-        info: 'Magnemite, Lv. 5, HP 10/10',
+        url: './assets/treasure-chest/tc-1.glb',
+        scale: '0.8 0.8 0.8',
         rotation: '0 180 0',
     },
     {
-        url: './assets/articuno/scene.gltf',
-        scale: '0.2 0.2 0.2',
-        rotation: '0 180 0',
-        info: 'Articuno, Lv. 80, HP 100/100',
+        url: './assets/treasure-chest/tc-1.glb',
+        scale: '0.8 0.8 0.8',
+        rotation: '0 180 0'
     },
     {
-        url: './assets/dragonite/scene.gltf',
-        scale: '0.08 0.08 0.08',
-        rotation: '0 180 0',
-        info: 'Dragonite, Lv. 99, HP 150/150',
+        url: './assets/treasure-chest/tc-1.glb',
+        scale: '0.8 0.8 0.8',
+        rotation: '0 180 0'
     },
 ];
 
@@ -41,14 +38,13 @@ function setModel(model, entity) {
     if (model.scale)    entity.setAttribute('scale',    model.scale);
     if (model.rotation) entity.setAttribute('rotation', model.rotation);
     if (model.position) entity.setAttribute('position', model.position);
-    entity.setAttribute('gltf-model', model.url);
-    document.getElementById('model-info').innerText = model.info;
+    entity.setAttribute('glb-model', model.url);
+    // document.getElementById('model-info').innerText = model.info;
 }
 
 function renderPlaces(places) {
     var scene = document.querySelector('a-scene');
 
-    // Remove any previously placed entities before re-rendering
     document.querySelectorAll('[gps-entity-place]').forEach(function (el) {
         el.parentNode.removeChild(el);
     });
@@ -79,15 +75,15 @@ function renderPlaces(places) {
 function buildPlacesFromCoords(lat, lng) {
     return [
         {
-            name: 'Magnemite',
+            name: 'TC-1',
             location: offsetCoords(lat, lng, 5, 0)   // 5 m north
         },
         {
-            name: 'Articuno',
+            name: 'TC-2',
             location: offsetCoords(lat, lng, 0, 5)   // 5 m east
         },
         {
-            name: 'Dragonite',
+            name: 'TC-3',
             location: offsetCoords(lat, lng, 0, -5)  // 5 m west
         },
     ];
